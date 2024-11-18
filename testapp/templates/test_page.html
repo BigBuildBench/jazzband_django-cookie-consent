@@ -1,0 +1,78 @@
+{% load static %}
+{% load cookie_consent_tags %}
+{% url "cookie_consent_cookie_group_list" as url_cookies %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <link href="{% static 'styles.css' %}" rel="stylesheet" />
+    </head>
+
+  <body>
+    <h1>Test page</h1>
+
+    <span id="loading-marker" style="display:none">page-done-loading</span>
+
+    <h2>Social cookies</h2>
+    <p>
+        sharing button is displayed below only if "Social" cookies are accepted.
+        <button id="share-button" type="button" style="display:none">SHARE</button>
+    </p>
+
+    {# NOTE - this section is not compatible with django's full page cache #}
+    <h2>Optional cookies</h2>
+    {% if request|cookie_group_accepted:"optional" %}
+        <p>"optional" cookies accepted</p>
+    {% elif request|cookie_group_declined:"optional" %}
+        <p>"optional" cookies declined</p>
+    {% else %}
+        <p>"optional" cookies not accepted or declined</p>
+    {% endif %}
+
+    {# not existing cookie group #}
+    {% if request|cookie_group_accepted:"foo=*:.foo.com" %}
+        <p>None existing cookies</p>
+    {% endif %}
+    {# END of section not compatible with page cache #}
+
+    <p>
+        <a href="{{ url_cookies }}">Cookies policy</a>
+    </p>
+
+    {% if request|cookie_consent_enabled %}
+        {% not_accepted_or_declined_cookie_groups request as cookie_groups %}
+
+        {% cookie_consent_accept_url cookie_groups as url_accept %}
+        {% cookie_consent_decline_url cookie_groups as url_decline %}
+
+        {# Set up the data and template for dynamic JS cookie bar #}
+        {% all_cookie_groups 'cookie-consent__cookie-groups' %}
+        {% comment %}
+            NOTE: to make this work with page caches, you'd typically leave out the
+            dynamic parts (such as {{ cookie_groups }}) and handle that dynamically
+            in JS.
+
+            For example, by getting the information dynamically from a template, putting
+            that in the template fragment and eventually calling the code from
+            cookiebar.module.js.
+
+            FIXME: add this to the docs
+        {% endcomment %}
+        <template id="cookie-consent__cookie-bar">
+            {% with cookie_groups=cookie_groups|join:", " %}
+            <div class="cookie-bar">
+                This site uses {{ cookie_groups }} cookies for better performance and user experience.
+                Do you agree to use these cookies?
+                {# Button is the more accessible role, but an anchor tag would also work #}
+                <button type="button" class="cookie-consent__accept">Accept</button>
+                <button type="button" class="cookie-consent__decline">Decline</button>
+                <a href="{{ url_cookies }}">Cookies info</a>
+            </div>
+            {% endwith %}
+        </template>
+        {% url 'cookie_consent_status' as status_url %}
+        {% include "./show-cookie-bar-script.html" with status_url=status_url %}
+
+    {% endif %}
+
+  </body>
+</html>
